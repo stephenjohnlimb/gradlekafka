@@ -1,4 +1,4 @@
-package com.tinker.kafka;
+package com.tinker.business;
 
 /**
  * Just a simple key value pair to be used in this kafka example.
