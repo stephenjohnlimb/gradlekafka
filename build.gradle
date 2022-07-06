@@ -1,0 +1,41 @@
+plugins {
+    id 'java'
+    id "org.springframework.boot" version "2.7.1"
+}
+
+group 'com.tinker'
+version '1.0.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation platform('org.springframework.boot:spring-boot-dependencies:2.7.1')
+    implementation 'org.springframework.boot:spring-boot-starter'
+
+    //Actuator is for the metrics
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    //This is for the additional output for prometheus - see application.properties for details.
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+
+    //We need at least and index controller to kicking the port 8080 stuff and get the actuator running.
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    //Specific kafka stuff
+    implementation 'org.springframework.kafka:spring-kafka'
+    implementation 'org.apache.kafka:kafka-clients:3.2.0'
+
+    //Just for our testing
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+}
+
+test {
+    useJUnitPlatform()
+}
