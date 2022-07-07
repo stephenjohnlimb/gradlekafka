@@ -1,6 +1,7 @@
 plugins {
     id 'java'
-    id "org.springframework.boot" version "2.7.1"
+    id 'org.springframework.boot' version '2.7.1'
+    id 'com.google.cloud.tools.jib' version '3.2.1'
 }
 
 group 'com.tinker'
@@ -11,6 +12,18 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
+jib {
+    allowInsecureRegistries = true
+    from {
+        image = 'openjdk:17-jdk-alpine'
+    }
+
+    to {
+        //Double quotes important here like bash shell, single quotes are literal
+        //but double quotes allow variable expansion.
+        image = "192.168.64.2:32000/${rootProject.name}:${version}"
+    }
+}
 repositories {
     mavenCentral()
 }
