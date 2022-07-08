@@ -5,39 +5,52 @@
 I thought I'd extract the kafka part from the [boot repository](https://github.com/stephenjohnlimb/boot/blob/master/src/main/microk8s/kafka-boot/README.md)
 and also use 'gradle' as the main build mechanism.
 
-I've extracted the `topic` names out of the source and added them to [application.properties](resources/application.properties).
+I've extracted the `topic` names out of the source and added them to [application.properties](src/main/resources/application.properties), as below
 ```
+...
+
 # For the consumer
 spring.kafka.consumer.topic=test-java-topic
 
 # For the producer
 spring.kafka.producer.topic=test-out-topic
+
+...
 ```
 
-I altered the [`SpringBootKafkaProducer`](java/com/tinker/kafka/SpringBootKafkaProducer.java)
+I altered the [`SpringBootKafkaProducer`](src/main/java/com/tinker/kafka/SpringBootKafkaProducer.java)
 so that the value of the topic could be pulled in from the application.properties file:
 ```
+...
+
 @Component
 public class SpringBootKafkaProducer implements Consumer<Message> {
 
   @Value("${spring.kafka.producer.topic}")
   private String outgoingTopic;
+  
 ...
 ```
 
-I also altered the [`SpringBootKafkaConsumer`](java/com/tinker/kafka/SpringBootKafkaConsumer.java),
+I also altered the [`SpringBootKafkaConsumer`](src/main/java/com/tinker/kafka/SpringBootKafkaConsumer.java),
 but this was a bit more involved - I don't really like this sort of 'jiggery-pokery' - the syntax of the expression is not that elegant.
 ```
+...
+
 @KafkaListener(topics = "#{'${spring.kafka.consumer.topic}'}")
   public void consume(ConsumerRecord<String, String> record) {
+
 ...
+
 }
+
+...
 ```
 
 I found that I also needed to include some REST stuff to get the tomcat on port 8080 running and actuator
 enabled for metrics and live-ness checks.
 
-See [`IndexController`](java/com/tinker/kafka/IndexController.java) and [build.gradle](build.gradle),
+See [`IndexController`](src/main/java/com/tinker/kafka/IndexController.java) and [build.gradle](build.gradle),
 specifically:
 ```
 dependencies {
@@ -68,7 +81,7 @@ But I wanted to use Java 17 and so had to bump the version of gradle I use.
 See [gradle-wrapper.properties](gradle/wrapper/gradle-wrapper.properties) and specifically:
 `distributionUrl=https\://services.gradle.org/distributions/gradle-7.4.2-bin.zip`.
 
-I also had to modify [build.gradle](build.gradle):
+I also had to modify [build.gradle](build.gradle) as below:
 ```
 plugins {
     id 'java'
@@ -82,9 +95,11 @@ java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
 }
+
+...
 ```
 
-I needed the java and spring-boot plugins (I thought this might pull in my dependencies but no).
+I needed the java and spring-boot plugins (I thought this might pull in my dependencies; but no).
 
 So far, quite similar to maven, but more concise (I quite like it).
 
@@ -113,17 +128,21 @@ dependencies {
 ```
 
 I wasn't sure what this `implementation` meant at first, but then it dawned on me; it's the same sort of thing
-**maven** has in terms of _compile, runtime, test_ for example.
+**maven** has in terms of _compile, runtime, test_ for example. I could read the docs I suppose!
 
 ## Running the application
-I wasn't too sure on how to 'use this gradle', but from within IntelliJ you can:
+I wasn't too sure on how to 'use this gradle thing', but from within IntelliJ you can:
 - Use the Gradle 'perspective window' right click and reload (essential if you edit build.gradle)
 - Expand the tasks and pick a task to run - like 'assemble' or 'bootJar'
+
+Note: from a terminal and with your prompt in the project root directory you can use:
+`.\gradlew tasks` to see the list of tasks, then just choose the task like:
+`.\gradlew bootJar` for example.
 
 So by adding those 'plugins' for `java` and `spring-boot` you get a whole load of additional tasks.
 
 To run the spring-boot application, just use Tasks->application->bootRun. Gradle will then build it for you
-and run it.
+and run it. Or just `.\gradlew bootRun` (CTRL-C to terminate).
 
 So going with the flow of one project, with one spring-boot application and gradle - is a nice simple flow.
 It just makes sense to keep stuff for lots of microservices in this way. Your focus and way of working
@@ -193,7 +212,7 @@ OK so that was fairly easy, what about helm?
 ## Creating a helm chart and exposing values for application.properties
 
 So the Spring-Boot Kafka application now does read some configuration from the
-[application.properties](resources/application.properties) file. But DevOps guys aren't going
+[application.properties](src/main/resources/application.properties) file. But DevOps guys aren't going
 squirrel around inside the jar to alter that!
 
 What we need to do is make the most of where Spring-Boot pick up the application.properties from;
@@ -209,7 +228,7 @@ which will look like a file!
 Make a directory in this repo called `src\main\helm` then `cd src\main\helm` and
 issue `helm create gradle-kafka`. Now we have a chart we can work with!
 
-So alter [Chart.yaml](helm/gradle-kafka/Chart.yaml), add in [env.yaml](helm/gradle-kafka/templates/env.yaml)
+So alter [Chart.yaml](src/main/helm/gradle-kafka/Chart.yaml), add in [env.yaml](src/main/helm/gradle-kafka/templates/env.yaml)
 with:
 ```
 apiVersion: v1
@@ -240,7 +259,7 @@ data:
     spring.kafka.producer.value-serializer=org.apache.kafka.common.serialization.StringSerializer
 ```
 
-Then update [values.yaml](helm/gradle-kafka/values.yaml) with:
+Then update [values.yaml](src/main/helm/gradle-kafka/values.yaml) with:
 ```
 ...
 
