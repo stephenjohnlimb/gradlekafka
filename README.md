@@ -148,11 +148,14 @@ So going with the flow of one project, with one spring-boot application and grad
 It just makes sense to keep stuff for lots of microservices in this way. Your focus and way of working
 is really, really simple. Easy to get new people started and a standard way of working.
 
+'Just check out a repo from git, then use `.\gradlew ...'. Away you go! So this brings up the topic of
+[monorepo versus polyrepo](https://blog.bitsrc.io/monorepo-vs-polyrepo-5-things-you-should-consider-897f3b588e70)!
+
 ## Building a Dockerized Spring-Boot with Gradle
-As I'd used [JIB](https://www.baeldung.com/jib-dockerizing) with my **boot** repo; I thought I'd try
+As I'd used [JIB](https://www.baeldung.com/jib-dockerizing) with my maven **boot** repo; I thought I'd try
 it out with `gradle`.
 
-So I added the following into `build.gradle`:
+So I added the following into [`build.gradle`](build.gradle):
 ```
 plugins {
     id 'java'
@@ -185,12 +188,12 @@ jib {
 
 ```
 
-The first bit just pulls in the extension, which gives a few key `'jib` tasks, the
-**ext** bit is just to define a variable (as I might make this switchable later).
+The first bit just pulls in the extension, which gives a few key `jib` tasks, the
+**ext** bit is just to define a variable/property (as I might make this switchable later).
 
 Finally, the `jib` part is just the configuration as per the maven config in the **boot** repo.
 - from - what image to base your image off
-- allowInsecureRegistries - can we push into our local microk8s registry for example
+- allowInsecureRegistries - so we can push into our local microk8s registry for example
 - to (image) - the url and name/version of the image we are going to produce.
 
 Now run it with `.\gradlew jib` - that's it compiles, packages and pushes to the configured repo
@@ -203,7 +206,7 @@ curl http://192.168.64.2:32000/v2/gradle-kafka/tags/list
 # {"name":"gradle-kafka","tags":["1.0-SNAPSHOT"]}
 ```
 
-You can dump the `version` in `build.gradle` and try again and will see an additional version in there.
+You can bump the `version` in `build.gradle` and try again and will see an additional version in there.
 
 i.e. ` {"name":"gradle-kafka","tags":["1.0.0","1.0-SNAPSHOT"]}`
 
@@ -211,18 +214,22 @@ OK so that was fairly easy, what about helm?
 
 ## Creating a helm chart and exposing values for application.properties
 
-So the Spring-Boot Kafka application now does read some configuration from the
+So the Spring-Boot Kafka application now reads some configuration from the
 [application.properties](src/main/resources/application.properties) file. But DevOps guys aren't going
 squirrel around inside the jar to alter that!
 
-What we need to do is make the most of where Spring-Boot pick up the application.properties from;
-it is aware that is might need to just look on the file system first and use those values.
+What we need to do is make the most of where Spring-Boot pick up the [application.properties](src/main/resources/application.properties)
+from; it is aware that is might need to just look on the file system first and use those values.
 
 So we can make the most of the Kubernetes `configMap` and map a volume in so that it looks like
 an application.properties file on the file system.
 
 Now if we use **helm** we can create a template and then push those values into the `configMap`
 which will look like a file!
+
+**So this is an important point; developers need to meet the DevOps deployers 'half-way'.**
+What I mean by this is, we have to both develop the application, and it's configurability; but we need
+to deliver that configurability in a standard way. This has to be ready for deployment.
 
 ### Create a helm chart
 Make a directory in this repo called `src\main\helm` then `cd src\main\helm` and
@@ -297,6 +304,13 @@ We also need to expose on target port 8080 for tomcat.
 Then we move on to the values we are going to inject into the application.properties via the
 `configMap`. Hopefully you can see how the values defined here correlate to the values in the `env.yaml`.
 
+This now makes it obvious to any deployment engineer, what can be configured via `values` within your application.
+
+This is one of the key advantages of `helm`, the mechanism of configuration for any application is standardised!
+
+Though the range of what can be configured and how it is addressed is flexible, the `values.yaml` is standard for
+all applications.
+
 ### Deploy the application!
 
 To deploy, we need to build first and then use helm install.
@@ -307,7 +321,7 @@ to have the helm `Chart.yaml` appVersion aligned with the `version` in the `buil
 Maybe I'll look at that later!
 
 #### Build and Push Docker Image
-Now if you've run `.\gradlew jib` you will have created the containerised application `gradle-kafka:1.0-SNAPSHOT`
+Now if you've run `.\gradlew jib`; you will have created the containerised application `gradle-kafka:1.0-SNAPSHOT`
 and pushed it to `192.168.64.2:32000`. So that will exist as `localhost:32000/gradle-kafka:1.0-SNAPSHOT`
 as the `Chart.yaml` has `appVersion` at `1.0-SNAPSHOT`.
 
@@ -340,3 +354,6 @@ to use the mechanisms in gradle to update the helm Chart `appVersion` and also d
 build and deploy with a single command.
 
 That is still to do!
+
+But if you have a large set of applications to deploy, you need a standard way of deploying and
+helm gives you that capability.
