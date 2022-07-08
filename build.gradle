@@ -2,10 +2,27 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '2.7.1'
     id 'com.google.cloud.tools.jib' version '3.2.1'
+    id "org.unbroken-dome.helm" version "1.7.0"
 }
 
 group 'com.tinker'
 version '1.0-SNAPSHOT'
+
+ext {
+    //Default of where we will push the resulting jib generated docker image.
+    targetDockerRepository = "192.168.64.2:32000"
+}
+
+tasks.register('configureDockerRepository') {
+    doLast {
+        println "Would reconfigure repository url based on some values"
+    }
+}
+
+tasks.register('deployLocal') {
+    //Just an example of how to create a bespoke task and chain a few other tasks together
+    dependsOn('configureDockerRepository', tasks.getByName("jib"))
+}
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -21,9 +38,10 @@ jib {
     to {
         //Double quotes important here like bash shell, single quotes are literal
         //but double quotes allow variable expansion.
-        image = "192.168.64.2:32000/${rootProject.name}:${version}"
+        image = "${targetDockerRepository}/${rootProject.name}:${version}"
     }
 }
+
 repositories {
     mavenCentral()
 }
