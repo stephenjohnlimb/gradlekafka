@@ -218,7 +218,7 @@ So the Spring-Boot Kafka application now reads some configuration from the
 [application.properties](src/main/resources/application.properties) file. But DevOps guys aren't going
 squirrel around inside the jar to alter that!
 
-What we need to do is make the most of where Spring-Boot pick up the [application.properties](src/main/resources/application.properties)
+What we need to do is make the most of where Spring-Boot picks up the [application.properties](src/main/resources/application.properties)
 from; it is aware that is might need to just look on the file system first and use those values.
 
 So we can make the most of the Kubernetes `configMap` and map a volume in so that it looks like
@@ -326,14 +326,15 @@ and pushed it to `192.168.64.2:32000`. So that will exist as `localhost:32000/gr
 as the `Chart.yaml` has `appVersion` at `1.0-SNAPSHOT`.
 
 #### Deploy it via helm
-Now run just check the helm chart is Ok with:
-- `helm lint .\gradle-kafka`
-- `helm --dry-run --debug install my-gradle-kafka .\gradle-kafka`
+Now run just check the helm chart is OK with:
+- `helm lint .\helm`
+- `helm --dry-run --debug install my-gradle-kafka .\helm`
 
 Check the values that would be employed in the `configMap` are pulled through OK.
 
 If all is OK (and your indentation isn't out of whack), just deploy it:
-- `helm install my-gradle-kafka .\gradle-kafka`
+- `helm install my-gradle-kafka .\helm`
+
 You can then use `kubectl get services` and `kubectl get pods`.
 
 ### Now test it out again!
