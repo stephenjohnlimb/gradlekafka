@@ -6,22 +6,15 @@ plugins {
 }
 
 group 'com.tinker'
-version '1.0-SNAPSHOT'
+//This will be used as the version of the application in helm i.e. appVersion
+version '1.0.0'
 
 ext {
     //Default of where we will push the resulting jib generated docker image.
-    targetDockerRepository = "192.168.64.2:32000"
-}
-
-tasks.register('configureDockerRepository') {
-    doLast {
-        println "Would reconfigure repository url based on some values"
-    }
-}
-
-tasks.register('deployLocal') {
-    //Just an example of how to create a bespoke task and chain a few other tasks together
-    dependsOn('configureDockerRepository', tasks.getByName("jib"))
+    pushDockerRepository = "192.168.64.2:32000"
+    //This is where the helm deployment in K8s will pull image from.
+    pullDockerRepository = "localhost:32000"
+    helmChartVersion = '1.0.0'
 }
 
 java {
@@ -38,7 +31,19 @@ jib {
     to {
         //Double quotes important here like bash shell, single quotes are literal
         //but double quotes allow variable expansion.
-        image = "${targetDockerRepository}/${rootProject.name}:${version}"
+        image = "${project.pushDockerRepository}/${rootProject.name}:${version}"
+    }
+}
+
+// Use the helm plug in to also build and populate the helm chart parts
+//i.e. yes template the template - but only for a few items.
+helm {
+    filtering {
+        //But this is where K8s should pull the image from
+        values.put 'imageRepository', project.pullDockerRepository
+        values.put 'imageTag', version
+        values.put 'projectName', rootProject.name
+        values.put 'helmChartVersion', project.helmChartVersion
     }
 }
 

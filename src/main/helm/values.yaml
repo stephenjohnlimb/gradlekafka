@@ -5,7 +5,8 @@
 replicaCount: 1
 
 image:
-  repository: localhost:32000/gradle-kafka
+  # Expect org.unbroken-dome.helm build to populate this.
+  repository: ${imageRepository}/${projectName}
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
@@ -25,7 +26,7 @@ serviceAccount:
 
 # Same as the chart version
 podAnnotations:
-  envAnnotation: "1.0.0"
+  envAnnotation: ${helmChartVersion}
 
 podSecurityContext: {}
   # fsGroup: 2000

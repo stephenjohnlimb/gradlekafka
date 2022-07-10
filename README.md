@@ -232,10 +232,10 @@ What I mean by this is, we have to both develop the application, and it's config
 to deliver that configurability in a standard way. This has to be ready for deployment.
 
 ### Create a helm chart
-Make a directory in this repo called `src\main\helm` then `cd src\main\helm` and
-issue `helm create gradle-kafka`. Now we have a chart we can work with!
+So `cd src\main\` and
+issue `helm create helm`. Now we have a chart we can work with!
 
-So alter [Chart.yaml](src/main/helm/gradle-kafka/Chart.yaml), add in [env.yaml](src/main/helm/gradle-kafka/templates/env.yaml)
+So alter [Chart.yaml](src/main/helm/Chart.yaml), add in [env.yaml](src/main/helm/templates/env.yaml)
 with:
 ```
 apiVersion: v1
@@ -266,7 +266,7 @@ data:
     spring.kafka.producer.value-serializer=org.apache.kafka.common.serialization.StringSerializer
 ```
 
-Then update [values.yaml](src/main/helm/gradle-kafka/values.yaml) with:
+Then update [values.yaml](src/main/helm/values.yaml) with:
 ```
 ...
 
@@ -345,15 +345,104 @@ So from two terminal you can use:
 If all is running well, then the key/values you enter in `kafkacat -P ...` should
 come out with the values reversed in terminal window `kafkacat -C`.
 
-## Summary
-If you are using Spring-Boot, Docker and Kubernetes; Gradle and its `Jib` plugin
-make life really easy.
-
+## More improvements
 I've yet to tie up the gradle `version` and the helm Chart `appVersion`. I would also like
 to use the mechanisms in gradle to update the helm Chart `appVersion` and also do a full
 build and deploy with a single command.
 
-That is still to do!
+What I needed was a way to effectively replace in a few place-holders in the helm chart. Those values
+coming from the gradle configuration. So I found `org.unbroken-dome.helm` and added that plugin.
+```
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '2.7.1'
+    id 'com.google.cloud.tools.jib' version '3.2.1'
+    id "org.unbroken-dome.helm" version "1.7.0"
+}
+```
 
-But if you have a large set of applications to deploy, you need a standard way of deploying and
+Now I just had to revisit my helm config and put in a few place-holders, then add a bit more configuration
+to [build.gradle](build.gradle).
+
+```
+...
+
+ext {
+    //Default of where we will push the resulting jib generated docker image.
+    pushDockerRepository = "192.168.64.2:32000"
+    //This is where the helm deployment in K8s will pull image from.
+    pullDockerRepository = "localhost:32000"
+    helmChartVersion = '1.0.0'
+}
+
+...
+
+jib {
+    allowInsecureRegistries = true
+    from {
+        image = 'openjdk:17-jdk-alpine'
+    }
+
+    to {
+        //Double quotes important here like bash shell, single quotes are literal
+        //but double quotes allow variable expansion.
+        image = "${project.pushDockerRepository}/${rootProject.name}:${version}"
+    }
+}
+
+// Use the helm plug in to also build and populate the helm chart parts
+//i.e. yes template the template - but only for a few items.
+helm {
+    filtering {
+        //But this is where K8s should pull the image from
+        values.put 'imageRepository', project.pullDockerRepository
+        values.put 'imageTag', version
+        values.put 'projectName', rootProject.name
+        values.put 'helmChartVersion', project.helmChartVersion
+    }
+}
+
+...
+
+```
+
+I also updated `Chart.yaml`:
+```
+apiVersion: v2
+# Expect org.unbroken-dome.helm to populate these placeholders, see build.gradle.
+name: ${projectName}
+description: A Helm chart for ${projectName}
+
+type: application
+
+# The version number of the chart
+version: ${helmChartVersion}
+
+# The version number of the docker application image.
+# Always best to use double quotes.
+appVersion: "${imageTag}"
+```
+
+The idea here is to collect all the normal variables for versions and the like in the `build.gradle` file
+and then use `gradle` and `jib`/`broken-dome` to effectively update those values in our helm template files.
+
+So now, to build I can use:
+- ./gradlew jib
+- ./gradlew helmPackage
+
+Then I've got both a build of the Java and Docker image and the build of my helm templates, so now I can deploy locally:
+- helm install my-gradle-kafka ./build/helm/charts/gradle-kafka
+
+Now clearly it is possible/desirable to take this further and publish the resulting
+artefacts to specific repositories.
+
+Also I could combine the whole build into a single command with `gradle`.
+
+Maybe I'll look at that later.
+
+## Summary
+If you are using Spring-Boot, Docker and Kubernetes; Gradle and its `Jib`/`unbroken dome` plugins
+makes life **really easy**.
+
+If you have a large set of applications to deploy, you need a standard way of deploying and
 helm gives you that capability.

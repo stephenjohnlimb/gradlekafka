@@ -1,0 +1,13 @@
+apiVersion: v2
+# Expect org.unbroken-dome.helm to populate these placeholders, see build.gradle.
+name: ${projectName}
+description: A Helm chart for ${projectName}
+
+type: application
+
+# The version number of the chart
+version: ${helmChartVersion}
+
+# The version number of the docker application image.
+# Always best to use double quotes.
+appVersion: "${imageTag}"
