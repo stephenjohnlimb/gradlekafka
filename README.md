@@ -74,10 +74,10 @@ I've never really done any gradle before, but have used:
 - maven
 
 So the general concepts of **source files**, **dependencies** and
-resulting **artefacts** is pretty familiar to me.
+resulting **artefacts** are pretty familiar to me.
 
 I found 'gradle' to be pretty straight forward to get started with.
-But I wanted to use Java 17 and so had to bump the version of gradle I use.
+But I wanted to use Java 17 and so had to bump the version of gradle used.
 See [gradle-wrapper.properties](gradle/wrapper/gradle-wrapper.properties) and specifically:
 `distributionUrl=https\://services.gradle.org/distributions/gradle-7.4.2-bin.zip`.
 
@@ -144,12 +144,81 @@ So by adding those 'plugins' for `java` and `spring-boot` you get a whole load o
 To run the spring-boot application, just use Tasks->application->bootRun. Gradle will then build it for you
 and run it. Or just `.\gradlew bootRun` (CTRL-C to terminate).
 
-So going with the flow of one project, with one spring-boot application and gradle - is a nice simple flow.
+So going with one project, with one spring-boot application and gradle - is a nice simple flow.
 It just makes sense to keep stuff for lots of microservices in this way. Your focus and way of working
 is really, really simple. Easy to get new people started and a standard way of working.
 
 'Just check out a repo from git, then use `.\gradlew ...'. Away you go! So this brings up the topic of
 [monorepo versus polyrepo](https://blog.bitsrc.io/monorepo-vs-polyrepo-5-things-you-should-consider-897f3b588e70)!
+
+In the past I've worked with both 'mono-repo' and 'poly-repo'; personally I think it comes down to the size of the
+development organisation. If you are working in a fairly small team or not really fully embracing devops and microservices,
+perhaps a 'mono-repo' is the way to go.
+
+But for me, if you are scaling an organisation and employing micro-services with a real devops culture, I think
+a 'poly-repo' can work well.
+
+What I've found with the 'mono-repo' is that over time:
+- You end up with lots of cross linkage (Java modules may help - but I doubt it)
+- You end up not being able to migrate to newer Java versions with ease
+- You really have to both compile up the whole repo and even deploy large chunks for testing
+  - Because now with Java and dynamic loading/'Spring' - just compilation does not mean much
+  - Team ownership of specific area can be a bit ambiguous
+- You really need strong team(s) discipline (quite rare over a prolonged period of time)
+- The surface area is 'big' - it's not always clear where to look for what
+- The use of 'Spring' enables/facilitates laziness and inadvertent coupling
+- A full checkout/clone of a large mono-repo takes some time and space
+
+However, there are downsides to a 'poly-repo':
+- Repository overload - where to look for what - but why are you looking if you're not in the team!
+- You must have fully independent deployments of each 'microservice'
+- It is necessary to pull common code into its own repo and manage versioned builds (much like open source)
+- Separate components/libraries now need a roadmap and management.
+
+But this later approach does 'scale' - when you think about it, this is the approach opensource employs.
+
+The 'poly-repo' approach enforces true separation, it also enforces the explicit use of 'project-model' to
+explicitly identify dependencies. In a Java centric microservice development team it can work very well.
+
+Personally, having been around the 'bazaars' and various development teams/approaches and technologies all I
+can say is; I've rarely found anywhere with prolonged strong discipline when it comes to source code management and
+coupling (at scale).
+
+Small, medium and large is comparatively easy - but very large is a whole different ball game.
+
+So if you expect a 'full stack developer' to alter and edit a range of different code - then maybe a 'mono-repo'
+is for you. But it depends on how you structure your teams to delivery functionality.
+
+So for me if you plan to scale (really scale) - break things up - ensure each of the dependencies is 'owned' and has
+a road map. I know people will say X has a 'mono-repo' and they make it work. Well maybe they have
+strong discipline and self-control (does your company?).
+
+If you're going down a Kafka route, clearly you have taken a decision to
+really separate your processing to facility resilience, loose coupling, high throughput.
+Why would you then couple all your code in a 'mono-repo'? What if you really needed to use a
+Golang APi and language and migrate away from Java for a specific service?
+
+With a 'poly-repo' approach - just start a new repo with Golang. Meet the same interfaces for the
+Kafka topics (Avro maybe), run it all up and test it. Roll it out and delete the old Java repo.
+But of course now your opportunity for code reuse through libraries (Java libraries) is nil.
+
+This is what I mean by scaling/ownership - the team responsible for that service makes the decision.
+You may then ask - but what about corporate standards/architecture/design patterns/re-use?
+
+This is a natural 'friction' - 'architects'/'designers' want to enforce specific ways of working, but
+then don't want to own the final running live service! These are 'macro-engineering' decisions and need
+to be taken explicitly.
+
+There is no way any other team could accidentally depend on any of your old Java repo code. But if it were in
+a 'mono-repo' that possibility exists - So that old Java code would probably remain in place (just in case).
+
+That is 'baggage' and technical debt. Few people ever have the courage in the future to delete that code,
+especially with Spring style dynamic loading - sometimes just the presence (or not) of a class can change
+behaviour (look at actuator - just add it to the dependencies and as if by magic it get used).
+
+The 'mono-repo' vs 'poly-repo' has pros and cons, it depends on size of organisation/solution, politics,
+governance, ownership, problem domain complexity/simplicity, availability/scalability/resilience/throughput of the
+final solution. It will vary from organisation to organisation.
 
 ## Building a Dockerized Spring-Boot with Gradle
 As I'd used [JIB](https://www.baeldung.com/jib-dockerizing) with my maven **boot** repo; I thought I'd try
@@ -447,3 +516,59 @@ makes life **really easy**.
 
 If you have a large set of applications to deploy, you need a standard way of deploying and
 helm gives you that capability.
+
+### So what's really in this repo
+This repo would really just be one of many in a 'poly-repo', it's got:
+- A standard `gradle` build file that produces a docker image and a helm chart
+- The resulting values.yaml tell an engineer what can and should be configured at deployment time
+- Some standard Spring Java Kafka annotated [classes](src/main/java/com/tinker/kafka)
+- Some very basic [business](src/main/java/com/tinker/business) functionality (string reversing!)
+- It has prometheus monitoring components built in
+
+It should also really have an associated `grafana` configuration for monitoring.
+There should also be a range of tests, both the business logic tests and the Kafka messaging
+serialization/deserialization tests.
+
+See [Poison Pill](https://www.confluent.io/en-gb/blog/spring-kafka-can-your-kafka-consumers-handle-a-poison-pill/) on why
+you need to run checks on incoming messages.
+
+If you are seriously using Kafka, you will probably want to have a range of [Fuzzing](https://owasp.org/www-community/Fuzzing)
+messages or code to create a range of fuzzing messages.
+
+This will probably be:
+- Just pseudo random stuff that should fail at deserialization
+- Valid serialised data but with a wide range of invalid values
+- For AVRO, you'd probably want to generate a vaid AVRO structure but with lots of bad combinations of data.
+
+Again, for serious use of messaging, you should deploy your Kafka component that processes incoming messages
+in isolation. So this is not a unit-test or an integration-test or even an end-to-end-test.
+But a long-running (like forever running) isolated deployment, that just has an infinite stream
+of fuzzed messages being injected. Just keep it going - you should never get a failure in your logs.
+Your dead letter queue should just be filled with all the fuzzed messages as your robust application
+rejects them. Your valid processing queue should remain empty, after all; all the input is supposed to be
+in error.
+
+But in terms of 'getting your head around it', its surface area is small, the dependencies are documented
+and obvious [see build.gradle](build.gradle). No other project could every depend on our 
+[StringReverser](src/main/java/com/tinker/business/internal/StringReverser.java). It is a hidden low level implmentation
+detail.
+
+Now imagine giving a task to a new developer or contractor:
+"Enhance the service to not only reserve the incoming value, but also UpperCase the first letter in the resulting output".
+
+If I'd elected to use AVRO, then we'd have needed to do some consumer/producer checks as well.
+
+It is pretty easy to provide the url of the 'repo'. Easy for that developer to, check-out and build/run the
+application. Updates the test (if I'd added some), bump the application and chart version and commit it.
+
+Task done! Now what about the wider selection and running of this new version?
+
+Well that developer does not need to work about that, the developer can just get on with the next task. The
+selection of when to roll out and check fully end-to-end can be made elsewhere and at the appropriate time.
+
+Note, there is virtually no chance of having 'merge conflicts', there is no danger of altering that
+reversing code because something else uses it
+(either directly or by constructing a Spring bean name from strings and doing a 'Class.forName' or 'BeanFactory.getBean').
+
+This is one of the main reasons I prefer a 'poly-repo' approach. Finding stuff that is dependent on some code you're
+about to change is easy. This is also one of the reasons I only use Spring in moderation and in a very limited manner.
