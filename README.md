@@ -151,6 +151,7 @@ is really, really simple. Easy to get new people started and a standard way of w
 'Just check out a repo from git, then use `.\gradlew ...'. Away you go! So this brings up the topic of
 [monorepo versus polyrepo](https://blog.bitsrc.io/monorepo-vs-polyrepo-5-things-you-should-consider-897f3b588e70)!
 
+### Repositories mono vs poly
 In the past I've worked with both 'mono-repo' and 'poly-repo'; personally I think it comes down to the size of the
 development organisation. If you are working in a fairly small team or not really fully embracing devops and microservices,
 perhaps a 'mono-repo' is the way to go.
@@ -194,7 +195,7 @@ a road map. I know people will say X has a 'mono-repo' and they make it work. We
 strong discipline and self-control (does your company?).
 
 If you're going down a Kafka route, clearly you have taken a decision to
-really separate your processing to facility resilience, loose coupling, high throughput.
+really separate your processing to facilitate resilience, loose coupling, high throughput.
 Why would you then couple all your code in a 'mono-repo'? What if you really needed to use a
 Golang APi and language and migrate away from Java for a specific service?
 
@@ -214,7 +215,7 @@ a 'mono-repo' that possibility exists - So that old Java code would probably rem
 
 That is 'baggage' and technical debt. Few people ever have the courage in the future to delete that code,
 especially with Spring style dynamic loading - sometimes just the presence (or not) of a class can change
-behaviour (look at actuator - just add it to the dependencies and as if by magic it get used).
+behaviour (look at actuator - just add it to the dependencies and as if by magic it was used).
 
 The 'mono-repo' vs 'poly-repo' has pros and cons, it depends on size of organisation/solution, politics,
 governance, ownership, problem domain complexity/simplicity, availability/scalability/resilience/throughput of the
